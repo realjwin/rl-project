@@ -128,9 +128,9 @@ def pick_user(scenario, bandit_strategy, epsilon, time_idx, c = None):
 
 def update_estimate(scenario, reward, bandit_strategy, time_idx, alpha = None):
     if bandit_strategy == 'avg' or bandit_strategy == 'ucb_avg':
-        scenario['reward_prediction'] += (reward + (reward - scenario['reward_prediction'])/(time_idx + 1))
+        scenario['reward_prediction'] += (reward - scenario['reward_prediction'])/(time_idx + 1)
     elif bandit_strategy == 'exp' or bandit_strategy == 'ucb_exp':
-        scenario['reward_prediction'] += (reward + alpha*(reward - scenario['reward_prediction']))
+        scenario['reward_prediction'] += alpha*(reward - scenario['reward_prediction'])
         
     return scenario
     

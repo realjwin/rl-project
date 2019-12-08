@@ -60,7 +60,7 @@ num_steps = 1000
 bandit_strategy = 'exp'
 c = 1 #required for ucb
 c_increment = 0
-alpha = 0. #required for 
+alpha = 0.9 #required for 
 epsilon = 0.
 
 # User power update algorithm
@@ -93,8 +93,8 @@ for iter_num in tqdm(range(num_iters)):
     # For each timestep
     for time_idx in range(num_steps):
         # Increment user locations
-        #if np.mod(time_idx+1, 40) == 0:
-            #c += c_increment
+            
+        #if np.mod(time_idx+1, 200) == 0:
             #scenario = move_random(scenario)
         
         # Update SINR values
