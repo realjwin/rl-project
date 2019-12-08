@@ -22,6 +22,12 @@ def init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power,
     # Blind as they enter the cell
     user_power_idx = (np.floor(len(p_valid)/2) * np.ones((num_users,))).astype(np.int)
     
+    # Initialized reward prediction to 0
+    reward_prediction = np.zeros((num_users,))
+    
+    # Num times user selected
+    user_selection_count = np.zeros((num_users,))
+    
     # Create and return scenario dictionary
     scenario = {'xlim': xlim,
                 'ylim': ylim,
@@ -33,7 +39,9 @@ def init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power,
                 'noise_power': noise_power,
                 'p_valid': p_valid,
                 'eta': eta,
-                'eta_penalty': eta_penalty}
+                'eta_penalty': eta_penalty,
+                'reward_prediction': reward_prediction,
+                'user_selection_count': user_selection_count}
     return scenario
     
 # Move all users in a random direction (diagonal included)
@@ -88,39 +96,80 @@ def update_sinr(scenario):
     # Write and return
     scenario['user_sinr'] = user_sinr
     return scenario
+
+def pick_user(scenario, bandit_strategy, epsilon, time_idx, c = None):    
+    # Choose user
+    if bandit_strategy == 'random':
+        user_idx = np.random.randint(low=0, high=scenario['num_users'])
+        
+    elif bandit_strategy == 'ucb_exp' or bandit_strategy == 'ucb_avg':
+        values = scenario['reward_prediction'] + c * np.sqrt((time_idx + 1) / (scenario['user_selection_count']+10e-10))
+        user_idx = np.random.choice(np.where(values == np.max(values))[0])
+        
+    elif bandit_strategy == 'avg' or bandit_strategy == 'exp':
+        # Epsilon greedy
+        if np.random.binomial(1 , 1 - epsilon, 1):   
+            values = scenario['reward_prediction']
+            user_idx = np.random.choice(np.where(values == np.max(values))[0])
+        else:
+            user_idx = np.random.randint(low=0, high=scenario['num_users'])    
+    else:
+        # Error
+        return -1
+
+#    if bandit_strategy != 'random':
+#        if scenario['user_power_idx'][user_idx] == 0 or scenario['user_power_idx'][user_idx] == (len(scenario['p_valid']) - 1):
+#            user_idx = np.random.choice(np.setdiff1d(np.arange(scenario['num_users']), user_idx))
+    
+    # Update user selection count
+    scenario['user_selection_count'][user_idx] += 1
+    
+    return user_idx
+
+def update_estimate(scenario, reward, bandit_strategy, time_idx, alpha = None):
+    if bandit_strategy == 'avg' or bandit_strategy == 'ucb_avg':
+        scenario['reward_prediction'] += (reward + (reward - scenario['reward_prediction'])/(time_idx + 1))
+    elif bandit_strategy == 'exp' or bandit_strategy == 'ucb_exp':
+        scenario['reward_prediction'] += (reward + alpha*(reward - scenario['reward_prediction']))
+        
+    return scenario
     
 # One-step power adjustment scheme
-def user_power_adjust(scenario, user_update_idx):
+def user_power_adjust(scenario, user_update_idx, algorithm, step_size):
     cur_pow_idx = scenario['user_power_idx'][user_update_idx]
     cur_pow = scenario['p_valid'][cur_pow_idx]
     cur_sinr = scenario['user_sinr'][user_update_idx]
     min_sinr = scenario['eta'][user_update_idx]
     
-    # Perform direct update, step update limited.
-    if cur_sinr >= min_sinr:
-        new_pow = scenario['p_valid'][max(cur_pow_idx - 1, 0)]
-        new_sinr = new_pow * (cur_sinr / cur_pow)
-        
-        if new_sinr >= min_sinr:
-            scenario['user_power_idx'][user_update_idx] = max(cur_pow_idx - 1, 0)
+    # Step Update
+    if algorithm == 'step':
+        if cur_sinr >= min_sinr:
+            new_pow = scenario['p_valid'][max(cur_pow_idx - 1, 0)]
+            new_sinr = new_pow * (cur_sinr / cur_pow)
             
-    else:
-        scenario['user_power_idx'][user_update_idx] = min(cur_pow_idx + 1, len(scenario['p_valid'])-1)
-    
-    #there is something wrong with this formula, changing to step update
-    #new_power = scenario['eta'][user_update_idx] * scenario['user_powers'][user_update_idx] / scenario['user_sinr'][user_update_idx]
-    #new_power = scenario['p_valid'][np.argmin(np.square(new_power - scenario['p_valid']))] 
-    
-    # Write and return
-    #scenario['user_powers'][user_update_idx] = new_power
-    
+            if new_sinr >= min_sinr:
+                scenario['user_power_idx'][user_update_idx] = max(cur_pow_idx - 1, 0)
+                
+        else:
+            scenario['user_power_idx'][user_update_idx] = min(cur_pow_idx + 1, len(scenario['p_valid'])-1)
+    elif algorithm == 'direct':
+        if cur_sinr > min_sinr:
+            cur_sinr = min_sinr * step_size
+        elif cur_sinr <= min_sinr:
+            cur_sinr = min_sinr / step_size
+        
+        new_pow = min_sinr * cur_pow / cur_sinr
+        scenario['user_power_idx'][user_update_idx] = np.argmin(np.square(new_pow - scenario['p_valid']))
+
     return scenario
 
 # Capacity reward with a negative penalty when QoS is violated
 def capacity_reward(scenario):
     # Compute individual capacity
-    capacity = np.log2(1 + scenario['user_sinr'])
+    learning_capacity = np.abs(np.log2(1 + scenario['user_sinr']) - np.log2(1+ scenario['eta']))
     # Overwrite values where QoS requirement is not met
-    capacity[scenario['user_sinr'] < scenario['eta']] = scenario['eta_penalty']
+    #capacity[scenario['user_sinr'] < scenario['eta']] = scenario['eta_penalty']
     
-    return capacity
+    actual_capacity = scenario['user_sinr'] > scenario['eta']
+    
+    return learning_capacity, actual_capacity
