@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import datetime as datetime
 from matplotlib import pyplot as plt
+import tqdm as tqdm
 
 from aux_functions import *
 from bandit import run_bandit
@@ -17,8 +18,8 @@ num_steps = 1000
 # Bandit strategy
 # Options: avg, exp, ucb_avg, ucb_exp, random
 bandit_strategy = 'exp'
-alpha = 0.5
-epsilon = 0.01
+alpha = np.array([.1, .2, .5, .9, .99])
+epsilon = np.array([0, .01, .05, .1])
 step_size = None #1.05 #fake SINR step size
 
 # Reward function
@@ -57,44 +58,40 @@ epsilon_distance = 1e-2 #in case user shares coordinates w/ bs
 xlim = np.asarray([0, box_limits])
 ylim = np.asarray([0, box_limits])
 
+# Saved variables
+actual_reward_list = []
+learning_reward_list = []
+user_power_hist_list = []
+sinr_hist_list = []
+
 # Initialize scenario
 initialized_scenario = init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power, p_valid, eta)
 
-actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
-            num_iterations, num_steps, initialized_scenario, power_adjust,
-            reward_function, bandit_strategy, alpha, epsilon, step_size,
-            move_strategy, move_steps)
-
-# Plot
-fig, axes = plt.subplots(1, 2, figsize=(12,6))
-fig.suptitle('RL Performance', fontsize=16, y=1.02)
-         
-axes[0].plot(actual_reward)
-axes[0].set_title('Actual Reward History', fontsize = 14)
-axes[0].set_xlabel('Time', fontsize = 14)
-
-axes[1].hist(user_power_hist[:,175,:].flatten(), bins=p_valid)
-axes[1].set_title('User Power', fontsize = 14)
-axes[1].set_xlabel('Bins', fontsize = 14)
-
-max_loc = np.argmax(actual_reward)
-
-print('Average power at {}: {}, Average power at end: {}'.format(max_loc, np.mean(user_power_hist[:,max_loc,:]), np.mean(user_power_hist[:,-1,:])))
-
-plt.tight_layout()
-plt.show()
+for epsilon_idx, epsilon_val in enumerate(epsilon):
+    for alpha_idx, alpha_val in enumerate(alpha):
+        print('epsilon: {}, alpha: {}'.format(epsilon_val, alpha_val))
+        
+        actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
+                    num_iterations, num_steps, initialized_scenario, power_adjust,
+                    reward_function, bandit_strategy, alpha_val, epsilon_val, step_size,
+                    move_strategy, move_steps)
+        
+        actual_reward_list.append(actual_reward)
+        learning_reward_list.append(learning_reward)
+        user_power_hist_list.append(user_power_hist)
+        sinr_hist_list.append(sinr_hist)
 
 ts = datetime.datetime.now()
 
-filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '.pkl'
+filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '_grid.pkl'
 filepath = 'results/' + filename
 
 with open(filepath, 'wb') as f:
     save_dict = {
-            'actual_reward': actual_reward,
-            'learning_reward': learning_reward,
-            'user_power_hist': user_power_hist,
-            'sinr_hist': sinr_hist,
+            'actual_reward_list': actual_reward_list,
+            'learning_reward_list': learning_reward_list,
+            'user_power_hist_list': user_power_hist_list,
+            'sinr_hist_list': sinr_hist_list,
             'num_iterations': num_iterations,
             'num_steps': num_steps,
             'initialized_scenario': initialized_scenario,

@@ -11,16 +11,10 @@ import numpy as np
 # Initialize random user and base station locations within given limits
 # And other parameters
 def init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power,
-                  p_valid, eta, eta_penalty):
-    # Place the base station near (or in) the center
-    bs_location = np.asarray([np.random.randint(low=np.max(xlim)//2-2, high=np.max(xlim)//2+2, size=(1,)),
-                              np.random.randint(low=np.max(ylim)//2-2, high=np.max(ylim)//2+2, size=(1,))]).T
-    # Place users at random starting locations
-    user_locations = np.asarray([np.random.randint(low=np.min(xlim), high=np.max(xlim), size=(num_users,)),
-                                 np.random.randint(low=np.min(ylim), high=np.max(ylim), size=(num_users,))]).T
+                  p_valid, eta):
     # Initialize user powers
     # Blind as they enter the cell
-    user_power_idx = (np.floor(len(p_valid)/2) * np.ones((num_users,))).astype(np.int)
+    user_power_idx = np.random.randint(0, len(p_valid), num_users) #(np.floor(len(p_valid)/2) * np.ones((num_users,))).astype(np.int)
     
     # Initialized reward prediction to 0
     reward_prediction = np.zeros((num_users,))
@@ -33,17 +27,30 @@ def init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power,
                 'ylim': ylim,
                 'epsilon_distance': epsilon_distance,
                 'num_users': num_users,
-                'bs_location': bs_location,
-                'user_locations': user_locations,
                 'user_power_idx': user_power_idx,
                 'noise_power': noise_power,
                 'p_valid': p_valid,
                 'eta': eta,
-                'eta_penalty': eta_penalty,
                 'reward_prediction': reward_prediction,
                 'user_selection_count': user_selection_count}
     return scenario
+
+def set_locations(scenario):
+    xlim = scenario['xlim']
+    ylim = scenario['ylim']
+    num_users = scenario['num_users']
     
+    bs_location = np.asarray([np.random.randint(low=np.max(xlim)//2-2, high=np.max(xlim)//2+2, size=(1,)),
+                              np.random.randint(low=np.max(ylim)//2-2, high=np.max(ylim)//2+2, size=(1,))]).T
+    # Place users at random starting locations
+    user_locations = np.asarray([np.random.randint(low=np.min(xlim), high=np.max(xlim), size=(num_users,)),
+                                 np.random.randint(low=np.min(ylim), high=np.max(ylim), size=(num_users,))]).T
+    
+    scenario['bs_location'] = bs_location
+    scenario['user_locations'] = user_locations
+    
+    return scenario
+
 # Move all users in a random direction (diagonal included)
 def move_random(scenario):
     # Original locations
@@ -153,23 +160,27 @@ def user_power_adjust(scenario, user_update_idx, algorithm, step_size):
         else:
             scenario['user_power_idx'][user_update_idx] = min(cur_pow_idx + 1, len(scenario['p_valid'])-1)
     elif algorithm == 'direct':
-        if cur_sinr > min_sinr:
-            cur_sinr = min_sinr * step_size
-        elif cur_sinr <= min_sinr:
-            cur_sinr = min_sinr / step_size
+        if step_size:
+            if cur_sinr > min_sinr:
+                cur_sinr = min_sinr * step_size
+            elif cur_sinr <= min_sinr:
+                cur_sinr = min_sinr / step_size
         
         new_pow = min_sinr * cur_pow / cur_sinr
+        
         scenario['user_power_idx'][user_update_idx] = np.argmin(np.square(new_pow - scenario['p_valid']))
 
     return scenario
 
 # Capacity reward with a negative penalty when QoS is violated
-def capacity_reward(scenario):
+def reward(scenario, reward_function):
     # Compute individual capacity
-    learning_capacity = np.abs(np.log2(1 + scenario['user_sinr']) - np.log2(1+ scenario['eta']))
-    # Overwrite values where QoS requirement is not met
-    #capacity[scenario['user_sinr'] < scenario['eta']] = scenario['eta_penalty']
+    actual_reward = scenario['user_sinr'] > scenario['eta']
     
-    actual_capacity = scenario['user_sinr'] > scenario['eta']
+    if reward_function == 'actual':
+        learning_reward = actual_reward
+    elif reward_function == 'delta':
+        learning_reward = np.abs(np.log2(1 + scenario['user_sinr']) - np.log2(1+ scenario['eta']))    
     
-    return learning_capacity, actual_capacity
+    
+    return learning_reward, actual_reward
