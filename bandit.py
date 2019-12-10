@@ -6,7 +6,7 @@ from aux_functions import *
 
 def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust, 
                reward_function, bandit_strategy, alpha, epsilon, step_size, 
-               move_strategy, move_steps):
+               move_strategy, move_steps, max_user_box, reset, move_stepsize=1):
 
     scenario = copy.deepcopy(initialized_scenario)
     
@@ -27,7 +27,7 @@ def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust,
         scenario = copy.deepcopy(initialized_scenario)
         
         # Set user and bs location
-        scenario = set_locations(scenario)
+        scenario = set_locations(scenario, max_user_box)
         
         ## Time evolution
         learning_reward_list = []
@@ -43,9 +43,11 @@ def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust,
             if move_strategy != 'stationary':
                 if np.mod(time_idx+1, move_steps) == 0:
                     if move_strategy == 'random':
-                        scenario = move_random(scenario)
+                        scenario = move_random(scenario, move_stepsize)
                     elif move_strategy == 'box':
-                        scenario = move_box(scenario)
+                        scenario = move_random_boxed(scenario)
+                    if reset:
+                        scenario = reset_users(scenario)
             
             # Update SINR values
             scenario = update_sinr(scenario)

@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  2 13:15:02 2019
-
-@author: marius
-"""
-
-import numpy as np
+=import numpy as np
 
 # Initialize random user and base station locations within given limits
 # And other parameters
@@ -99,7 +91,7 @@ def move_random_boxed(scenario):
     return scenario
 
 # Move all users in a random direction (diagonal included)
-def move_random(scenario):
+def move_random(scenario, step):
     # Original locations
     locations = scenario['user_locations']
     
@@ -108,7 +100,7 @@ def move_random(scenario):
     ylim = scenario['ylim']
     
     # All possible movement operators
-    movement_ops = np.asarray([-1, 0, 1])
+    movement_ops = np.arange(-step, step+1)
     
     # For each user
     for user_idx in range(locations.shape[0]):
@@ -134,8 +126,8 @@ def move_random(scenario):
 def update_sinr(scenario):
     # Transmit powers
     # Distances to base station
-    user_bs_dist = np.sqrt(np.sum(np.square(scenario['user_locations'] - scenario[
-            'bs_location']), axis=-1))
+    user_bs_dist = np.sqrt(np.sum(np.square(scenario['user_locations'] / 100 - scenario[
+            'bs_location'] / 100), axis=-1))
     # Replace zero distances with epsilon stabilizer
     user_bs_dist[user_bs_dist == 0] = scenario['epsilon_distance']
     

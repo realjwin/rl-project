@@ -28,7 +28,7 @@ axes.plot(reward_exp_actual, '-b', linewidth=3, label='Bandit with Binary Reward
 axes.plot(reward_exp_delta, '-r', linewidth=3, label='Bandit with Soft Reward, \u03B1 = 0.5, \u03B5 = 0.01')
 axes.set_title('Reward History', fontsize = 16)
 axes.set_xlabel('Time', fontsize = 16)
-axes.set_ylabel('% of Users with Success', fontsize = 16)
+axes.set_ylabel('% of Successful Users', fontsize = 16)
 axes.legend(fontsize=12)
 
 axes.set_xticks(np.arange(0, 1001, 100))

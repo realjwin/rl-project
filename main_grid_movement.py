@@ -35,7 +35,7 @@ num_users = 4
 move_strategy = 'random'
 max_user_box = 0 #300 #set to zero for random/stationary
 move_steps = 1 #how many steps until movement
-move_stepsize = 3#how much it moves in one step
+move_stepsize = np.array([1,3,5])#how much it moves in one step
 reset = False #tells algorithm to reset user powers every movement step
 
 # User power update algorithm
@@ -60,44 +60,37 @@ epsilon_distance = 1e-2 #in case user shares coordinates w/ bs
 xlim = np.asarray([0, box_limits])
 ylim = np.asarray([0, box_limits])
 
+# Saved variables
+actual_reward_list = []
+learning_reward_list = []
+user_power_hist_list = []
+sinr_hist_list = []
+
 # Initialize scenario
 initialized_scenario = init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power, p_valid, eta)
 
-actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
-            num_iterations, num_steps, initialized_scenario, power_adjust,
-            reward_function, bandit_strategy, alpha, epsilon, step_size,
-            move_strategy, move_steps, max_user_box, reset, move_stepsize)
-
-# Plot
-fig, axes = plt.subplots(1, 2, figsize=(12,6))
-fig.suptitle('RL Performance', fontsize=16, y=1.02)
-         
-axes[0].plot(actual_reward)
-axes[0].set_title('Actual Reward History', fontsize = 14)
-axes[0].set_xlabel('Time', fontsize = 14)
-
-axes[1].hist(user_power_hist[:,175,:].flatten(), bins=p_valid)
-axes[1].set_title('User Power', fontsize = 14)
-axes[1].set_xlabel('Bins', fontsize = 14)
-
-max_loc = np.argmax(actual_reward)
-
-print('Average power at {}: {}, Average power at end: {}'.format(max_loc, np.mean(user_power_hist[:,max_loc,:]), np.mean(user_power_hist[:,-1,:])))
-
-plt.tight_layout()
-plt.show()
+for move_stepsize_idx, move_stepsize_val in enumerate(move_stepsize):
+    actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
+                num_iterations, num_steps, initialized_scenario, power_adjust,
+                reward_function, bandit_strategy, alpha, epsilon, step_size,
+                move_strategy, move_steps, max_user_box, reset, move_stepsize_val)
+    
+    actual_reward_list.append(actual_reward)
+    learning_reward_list.append(learning_reward)
+    user_power_hist_list.append(user_power_hist)
+    sinr_hist_list.append(sinr_hist)
 
 ts = datetime.datetime.now()
 
-filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '_movement.pkl'
+filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '_grid_movement.pkl'
 filepath = 'results/' + filename
 
 with open(filepath, 'wb') as f:
     save_dict = {
-            'actual_reward': actual_reward,
-            'learning_reward': learning_reward,
-            'user_power_hist': user_power_hist,
-            'sinr_hist': sinr_hist,
+            'actual_reward_list': actual_reward_list,
+            'learning_reward_list': learning_reward_list,
+            'user_power_hist_list': user_power_hist_list,
+            'sinr_hist_list': sinr_hist_list,
             'num_iterations': num_iterations,
             'num_steps': num_steps,
             'initialized_scenario': initialized_scenario,
@@ -105,6 +98,7 @@ with open(filepath, 'wb') as f:
             'epsilon': epsilon,
             'step_size': step_size,
             'move_strategy': move_strategy,
-            'move_steps': move_steps}
+            'move_steps': move_steps,
+            'move_stepsize': move_stepsize}
     
     pickle.dump(save_dict, f)
