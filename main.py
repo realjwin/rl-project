@@ -11,15 +11,15 @@ from bandit import run_bandit
 #np.random.seed(global_seed)
 
 #--- SIMULATION VARIABLES ---#
-num_iterations = 5000
-num_steps = 1000
+num_iterations = 200
+num_steps = 5000
 
 # Bandit strategy
 # Options: avg, exp, ucb_avg, ucb_exp, random
 bandit_strategy = 'exp'
 alpha = 0.5
-epsilon = 0.01
-step_size = None #1.05 #fake SINR step size
+epsilon = 0.
+step_size = 1.0725 #fake SINR step size
 
 # Reward function
 # Options: actual or delta
@@ -32,8 +32,10 @@ num_users = 4
 
 # Movement strategy
 # Options: stationary, random, box
-move_strategy = 'stationary'
-move_steps = None #how many steps until movement
+move_strategy = 'box'
+max_user_box = 5 #set to zero for random/stationary
+move_steps = 100 #how many steps until movement
+reset = False #tells algorithm to reset user powers every movement step
 
 # User power update algorithm
 # Options: direct, step
@@ -63,7 +65,7 @@ initialized_scenario = init_scenario(num_users, xlim, ylim, epsilon_distance, no
 actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
             num_iterations, num_steps, initialized_scenario, power_adjust,
             reward_function, bandit_strategy, alpha, epsilon, step_size,
-            move_strategy, move_steps)
+            move_strategy, move_steps, max_user_box, reset)
 
 # Plot
 fig, axes = plt.subplots(1, 2, figsize=(12,6))
@@ -86,7 +88,7 @@ plt.show()
 
 ts = datetime.datetime.now()
 
-filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '.pkl'
+filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '_movement.pkl'
 filepath = 'results/' + filename
 
 with open(filepath, 'wb') as f:

@@ -35,19 +35,66 @@ def init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power,
                 'user_selection_count': user_selection_count}
     return scenario
 
-def set_locations(scenario):
+def set_locations(scenario, max_user_box):
     xlim = scenario['xlim']
     ylim = scenario['ylim']
     num_users = scenario['num_users']
     
     bs_location = np.asarray([np.random.randint(low=np.max(xlim)//2-2, high=np.max(xlim)//2+2, size=(1,)),
-                              np.random.randint(low=np.max(ylim)//2-2, high=np.max(ylim)//2+2, size=(1,))]).T
+                          np.random.randint(low=np.max(ylim)//2-2, high=np.max(ylim)//2+2, size=(1,))]).T
+    
+    # Generate box sizes of random dimensions around each user
+    xbox = np.random.randint(low=0, high=max_user_box+1, size=(num_users,))
+    ybox = np.random.randint(low=0, high=max_user_box+1, size=(num_users,))
+
     # Place users at random starting locations
-    user_locations = np.asarray([np.random.randint(low=np.min(xlim), high=np.max(xlim), size=(num_users,)),
-                                 np.random.randint(low=np.min(ylim), high=np.max(ylim), size=(num_users,))]).T
+    user_locations = np.empty((num_users, 2))
+    xlim_user = np.empty((num_users, 2))
+    ylim_user = np.empty((num_users, 2))
+    
+    for user_idx in range(num_users):
+        # Generate user locations
+        user_locations[user_idx] = np.asarray([np.random.randint(low=np.min(xlim)+xbox[user_idx], high=np.max(xlim)-xbox[user_idx]),
+                                               np.random.randint(low=np.min(ylim)+ybox[user_idx], high=np.max(ylim)-ybox[user_idx])])
+        # Compute allowable movement limits (for restricted movement scenario)
+        xlim_user[user_idx] = np.asarray([user_locations[user_idx][0]-xbox[user_idx], user_locations[user_idx][0]+xbox[user_idx]])
+        ylim_user[user_idx] = np.asarray([user_locations[user_idx][1]-ybox[user_idx], user_locations[user_idx][1]+ybox[user_idx]])    
     
     scenario['bs_location'] = bs_location
     scenario['user_locations'] = user_locations
+    scenario['xlim_user'] = xlim_user
+    scenario['ylim_user'] = ylim_user
+    
+    return scenario
+
+# Move all users in a random direction inside their own boxes
+def move_random_boxed(scenario):
+    # Original locations
+    locations = scenario['user_locations']
+    
+    # Edges of box (for each user)
+    xlim = scenario['xlim_user']
+    ylim = scenario['ylim_user']
+    
+    # All possible movement operators
+    movement_ops = np.asarray([-1, 0, 1])
+    
+    # For each user
+    for user_idx in range(locations.shape[0]):
+        # Generate possible new coordinates
+        new_x = locations[user_idx][0] + movement_ops
+        new_y = locations[user_idx][1] + movement_ops
+        # Filter invalid ones
+        new_x = new_x[(new_x >= xlim[user_idx][0]) & (new_x <= xlim[user_idx][1])]
+        new_y = new_y[(new_y >= ylim[user_idx][0]) & (new_y <= ylim[user_idx][1])]
+        # And pick a random one
+        new_x = new_x[np.random.choice(len(new_x))]
+        new_y = new_y[np.random.choice(len(new_y))]
+        # Save new location
+        locations[user_idx] = np.asarray([new_x, new_y])
+    
+    # Write new locations
+    scenario['user_locations'] = locations
     
     return scenario
 
@@ -170,6 +217,11 @@ def user_power_adjust(scenario, user_update_idx, algorithm, step_size):
         
         scenario['user_power_idx'][user_update_idx] = np.argmin(np.square(new_pow - scenario['p_valid']))
 
+    return scenario
+
+def reset_users(scenario):
+    scenario['user_power_idx'] = np.random.randint(0, len(scenario['p_valid']), scenario['num_users'])
+    
     return scenario
 
 # Capacity reward with a negative penalty when QoS is violated
