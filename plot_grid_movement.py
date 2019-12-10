@@ -3,9 +3,9 @@ import numpy as np
 import datetime as datetime
 from matplotlib import pyplot as plt
 
-filename_random_movement = 'results/20191209-214608_random_delta_grid_movement.pkl'
+filename_random_movement = 'results/20191209-231430_random_delta_grid_movement.pkl'
 
-filename_bandit_movement = 'results/20191209-215502_exp_delta_grid_movement.pkl'
+filename_bandit_movement = 'results/20191209-231414_exp_delta_grid_movement.pkl'
 
 with open(filename_random_movement, 'rb') as f:
     data = pickle.load(f)
@@ -36,11 +36,9 @@ axes.set_yticks(np.arange(.1, 1.01, 0.1))
 
 for tick in axes.xaxis.get_major_ticks():
     tick.label.set_fontsize(14) 
-    #tick.label.set_rotation('vertical')
     
 for tick in axes.yaxis.get_major_ticks():
     tick.label.set_fontsize(14) 
-    #tick.label.set_rotation('vertical')
 
 plt.grid(linestyle='--')
 plt.tight_layout()

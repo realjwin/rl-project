@@ -6,7 +6,7 @@ from aux_functions import *
 
 def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust, 
                reward_function, bandit_strategy, alpha, epsilon, step_size, 
-               move_strategy, move_steps, max_user_box, reset, move_stepsize=1):
+               move_strategy, move_steps, move_stepsize, c):
 
     scenario = copy.deepcopy(initialized_scenario)
     
@@ -23,11 +23,12 @@ def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust,
     user_dist = []
     
     for iter_num in tqdm.tqdm(range(num_iterations)):
-        #np.random.seed(global_seed+iter_num)
+        
+        # Reset scenario
         scenario = copy.deepcopy(initialized_scenario)
         
         # Set user and bs location
-        scenario = set_locations(scenario, max_user_box)
+        scenario = set_locations(scenario)
         
         ## Time evolution
         learning_reward_list = []
@@ -40,21 +41,16 @@ def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust,
         for time_idx in range(num_steps):
             
             # Increment user locations
-            if move_strategy != 'stationary':
+            if move_strategy == 'random':
                 if np.mod(time_idx+1, move_steps) == 0:
-                    if move_strategy == 'random':
                         scenario = move_random(scenario, move_stepsize)
-                    elif move_strategy == 'box':
-                        scenario = move_random_boxed(scenario)
-                    if reset:
-                        scenario = reset_users(scenario)
             
             # Update SINR values
             scenario = update_sinr(scenario)
             
             sinr_list.append(scenario['user_sinr'])
 
-            user_idx = pick_user(scenario, bandit_strategy, epsilon, time_idx, c=1)
+            user_idx = pick_user(scenario, bandit_strategy, epsilon, time_idx, c)
 
             user_idx_list.append(user_idx)
             
@@ -91,10 +87,6 @@ def run_bandit(num_iterations, num_steps, initialized_scenario, power_adjust,
     final_actual_reward = np.asarray(final_actual_reward)
     final_user_power = np.asarray(final_user_power)
     user_dist = np.asarray(user_dist)
-    
-    #failed_reward = final_actual_reward[np.sum(final_actual_reward, axis = -1) <= 1]
-    #failed_power = final_user_power[np.sum(final_actual_reward, axis = -1) <= 1]
-    #failed_dist = user_dist[np.sum(final_actual_reward, axis = -1) <= 1]
     
     # Compute total rewards
     avg_learning_reward_hist = np.sum(avg_learning_reward_hist, axis=1) / num_iterations

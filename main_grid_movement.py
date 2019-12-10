@@ -11,18 +11,19 @@ from bandit import run_bandit
 #np.random.seed(global_seed)
 
 #--- SIMULATION VARIABLES ---#
-num_iterations = 100
+num_iterations = 10
 num_steps = 3000
 
 # Bandit strategy
 # Options: avg, exp, ucb_avg, ucb_exp, random
-bandit_strategy = 'exp'
+bandit_strategy = 'random'
 alpha = 0.5
 epsilon = 0.
-step_size = 1.0725 #fake SINR step size
+c = None
+step_size = 1.0725 #dampened update (delta)
 
 # Reward function
-# Options: actual or delta
+# Options: actual or delta (binary or soft)
 reward_function = 'delta'
 
 #--- SCENARIO VARIABLES ---#
@@ -31,12 +32,10 @@ reward_function = 'delta'
 num_users = 4
 
 # Movement strategy
-# Options: stationary, random, box
+# Options: stationary, random
 move_strategy = 'random'
-max_user_box = 0 #300 #set to zero for random/stationary
 move_steps = 1 #how many steps until movement
-move_stepsize = np.array([1,3,5])#how much it moves in one step
-reset = False #tells algorithm to reset user powers every movement step
+move_stepsize = np.array([1,3,5]) #how much it moves in one step
 
 # User power update algorithm
 # Options: direct, step
@@ -53,7 +52,7 @@ eta = 10 ** (-5.7 * np.ones((num_users,)) / 10)
 noise_power = 10 ** (-23 / 10)
 
 # Box size
-box_limits = 60 * 100 #switched to cm's!
+box_limits = 6000 #centimeters
 
 # Miscellaneous
 epsilon_distance = 1e-2 #in case user shares coordinates w/ bs
@@ -73,7 +72,7 @@ for move_stepsize_idx, move_stepsize_val in enumerate(move_stepsize):
     actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
                 num_iterations, num_steps, initialized_scenario, power_adjust,
                 reward_function, bandit_strategy, alpha, epsilon, step_size,
-                move_strategy, move_steps, max_user_box, reset, move_stepsize_val)
+                move_strategy, move_steps, move_stepsize_val, c)
     
     actual_reward_list.append(actual_reward)
     learning_reward_list.append(learning_reward)

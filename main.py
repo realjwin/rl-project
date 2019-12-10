@@ -11,18 +11,19 @@ from bandit import run_bandit
 #np.random.seed(global_seed)
 
 #--- SIMULATION VARIABLES ---#
-num_iterations = 100
-num_steps = 3000
+num_iterations = 10
+num_steps = 1000
 
 # Bandit strategy
 # Options: avg, exp, ucb_avg, ucb_exp, random
 bandit_strategy = 'exp'
 alpha = 0.5
 epsilon = 0.
-step_size = 1.0725 #fake SINR step size
+c = None
+step_size = 1.0725 #dampened update (delta)
 
 # Reward function
-# Options: actual or delta
+# Options: actual or delta (binary or soft)
 reward_function = 'delta'
 
 #--- SCENARIO VARIABLES ---#
@@ -31,12 +32,10 @@ reward_function = 'delta'
 num_users = 4
 
 # Movement strategy
-# Options: stationary, random, box
-move_strategy = 'random'
-max_user_box = 0 #300 #set to zero for random/stationary
-move_steps = 1 #how many steps until movement
-move_stepsize = 3#how much it moves in one step
-reset = False #tells algorithm to reset user powers every movement step
+# Options: stationary, random
+move_strategy = 'stationary'
+move_steps = None #how many steps until movement
+move_stepsize = None #how much it moves in one step
 
 # User power update algorithm
 # Options: direct, step
@@ -53,12 +52,14 @@ eta = 10 ** (-5.7 * np.ones((num_users,)) / 10)
 noise_power = 10 ** (-23 / 10)
 
 # Box size
-box_limits = 60 * 100 #switched to cm's!
+box_limits = 6000 #centimeters
 
 # Miscellaneous
 epsilon_distance = 1e-2 #in case user shares coordinates w/ bs
 xlim = np.asarray([0, box_limits])
 ylim = np.asarray([0, box_limits])
+
+#--- RUN BANDIT ---#
 
 # Initialize scenario
 initialized_scenario = init_scenario(num_users, xlim, ylim, epsilon_distance, noise_power, p_valid, eta)
@@ -66,30 +67,27 @@ initialized_scenario = init_scenario(num_users, xlim, ylim, epsilon_distance, no
 actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
             num_iterations, num_steps, initialized_scenario, power_adjust,
             reward_function, bandit_strategy, alpha, epsilon, step_size,
-            move_strategy, move_steps, max_user_box, reset, move_stepsize)
+            move_strategy, move_steps, move_stepsize, c)
 
-# Plot
-fig, axes = plt.subplots(1, 2, figsize=(12,6))
+#--- PLOT ---#
+fig, axes = plt.subplots(1, 1, figsize=(8,6))
 fig.suptitle('RL Performance', fontsize=16, y=1.02)
          
-axes[0].plot(actual_reward)
-axes[0].set_title('Actual Reward History', fontsize = 14)
-axes[0].set_xlabel('Time', fontsize = 14)
-
-axes[1].hist(user_power_hist[:,175,:].flatten(), bins=p_valid)
-axes[1].set_title('User Power', fontsize = 14)
-axes[1].set_xlabel('Bins', fontsize = 14)
-
-max_loc = np.argmax(actual_reward)
-
-print('Average power at {}: {}, Average power at end: {}'.format(max_loc, np.mean(user_power_hist[:,max_loc,:]), np.mean(user_power_hist[:,-1,:])))
+axes.plot(actual_reward)
+axes.set_title('Actual Reward History', fontsize = 14)
+axes.set_xlabel('Time', fontsize = 14)
 
 plt.tight_layout()
 plt.show()
 
+#max_loc = np.argmax(actual_reward)
+#print('Average power at {}: {}, Average power at end: {}'.format(max_loc, np.mean(user_power_hist[:,max_loc,:]), np.mean(user_power_hist[:,-1,:])))
+
+#--- SAVE ---#
+
 ts = datetime.datetime.now()
 
-filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '_movement.pkl'
+filename = ts.strftime('%Y%m%d-%H%M%S') + '_' + bandit_strategy + '_' + reward_function + '.pkl'
 filepath = 'results/' + filename
 
 with open(filepath, 'wb') as f:
@@ -105,6 +103,7 @@ with open(filepath, 'wb') as f:
             'epsilon': epsilon,
             'step_size': step_size,
             'move_strategy': move_strategy,
-            'move_steps': move_steps}
+            'move_steps': move_steps,
+            'move_stepsize': move_stepsize}
     
     pickle.dump(save_dict, f)

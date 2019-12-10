@@ -12,7 +12,7 @@ from bandit import run_bandit
 #np.random.seed(global_seed)
 
 #--- SIMULATION VARIABLES ---#
-num_iterations = 5000
+num_iterations = 10
 num_steps = 1000
 
 # Bandit strategy
@@ -20,10 +20,11 @@ num_steps = 1000
 bandit_strategy = 'exp'
 alpha = np.array([.1, .2, .5, .9, .99])
 epsilon = np.array([0, .01, .05, .1])
-step_size = None #1.05 #fake SINR step size
+c = None
+step_size = None #dampened update (delta)
 
 # Reward function
-# Options: actual or delta
+# Options: actual or delta (binary or soft)
 reward_function = 'delta'
 
 #--- SCENARIO VARIABLES ---#
@@ -32,9 +33,10 @@ reward_function = 'delta'
 num_users = 4
 
 # Movement strategy
-# Options: stationary, random, box
+# Options: stationary, random
 move_strategy = 'stationary'
 move_steps = None #how many steps until movement
+move_stepsize = None #how much it moves in one step
 
 # User power update algorithm
 # Options: direct, step
@@ -51,7 +53,7 @@ eta = 10 ** (-5.7 * np.ones((num_users,)) / 10)
 noise_power = 10 ** (-23 / 10)
 
 # Box size
-box_limits = 60
+box_limits = 6000 #centimeters
 
 # Miscellaneous
 epsilon_distance = 1e-2 #in case user shares coordinates w/ bs
@@ -74,7 +76,7 @@ for epsilon_idx, epsilon_val in enumerate(epsilon):
         actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
                     num_iterations, num_steps, initialized_scenario, power_adjust,
                     reward_function, bandit_strategy, alpha_val, epsilon_val, step_size,
-                    move_strategy, move_steps)
+                    move_strategy, move_steps, move_stepsize, c)
         
         actual_reward_list.append(actual_reward)
         learning_reward_list.append(learning_reward)
@@ -99,6 +101,7 @@ with open(filepath, 'wb') as f:
             'epsilon': epsilon,
             'step_size': step_size,
             'move_strategy': move_strategy,
-            'move_steps': move_steps}
+            'move_steps': move_steps,
+            'move_stepsize': move_stepsize}
     
     pickle.dump(save_dict, f)

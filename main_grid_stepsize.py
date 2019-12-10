@@ -20,10 +20,11 @@ num_steps = 1000
 bandit_strategy = 'exp'
 alpha = 0.5
 epsilon = 0.
-step_size = np.linspace(1.07, 1.085, 7) #fake SINR step size
+c = None
+step_size = [None, 1.05, 1.07, 1.08] #dampened update (delta)
 
 # Reward function
-# Options: actual or delta
+# Options: actual or delta (binary or soft)
 reward_function = 'delta'
 
 #--- SCENARIO VARIABLES ---#
@@ -32,11 +33,10 @@ reward_function = 'delta'
 num_users = 4
 
 # Movement strategy
-# Options: stationary, random (broken), box
+# Options: stationary, random
 move_strategy = 'stationary'
 move_steps = None #how many steps until movement
-max_user_box = 0 #for box, also breaks regular random
-reset = False
+move_stepsize = None #how much it moves in one step
 
 # User power update algorithm
 # Options: direct, step
@@ -75,7 +75,7 @@ for step_size_idx, step_size_val in enumerate(step_size):
         actual_reward, learning_reward, user_power_hist, sinr_hist = run_bandit(
                     num_iterations, num_steps, initialized_scenario, power_adjust,
                     reward_function, bandit_strategy, alpha, epsilon, step_size_val,
-                    move_strategy, move_steps, max_user_box, reset)
+                    move_strategy, move_steps, move_stepsize, c)
         
         actual_reward_list.append(actual_reward)
         learning_reward_list.append(learning_reward)
@@ -100,6 +100,7 @@ with open(filepath, 'wb') as f:
             'epsilon': epsilon,
             'step_size': step_size,
             'move_strategy': move_strategy,
-            'move_steps': move_steps}
+            'move_steps': move_steps,
+            'move_stepsize': move_stepsize}
     
     pickle.dump(save_dict, f)

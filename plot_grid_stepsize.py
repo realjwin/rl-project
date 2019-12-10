@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 
 
-filename = 'results/20191209-195031_exp_delta_grid_stepsize.pkl' #20191209-183604_exp_delta_grid_stepsize.pkl'
+filename = 'results/20191209-232749_exp_delta_grid_stepsize.pkl'
 
 with open(filename, 'rb') as f:
     data = pickle.load(f)
@@ -15,24 +15,16 @@ with open(filename, 'rb') as f:
     step_size = data['step_size']
     num_users = data['initialized_scenario']['num_users']
 
-filename = 'results/20191209-174917_exp_delta_grid.pkl'
-
-with open(filename, 'rb') as f:
-    data = pickle.load(f)
-    reward_list_other = data['actual_reward_list']
-    epsilon = data['epsilon']
-    alpha = data['alpha']
-    
-    no_step = reward_list_other[2]
-
-
 # Plot
 fig, axes = plt.subplots(1, 1, figsize=(8,6))
 
-for step_size_idx, step_size_val in enumerate(step_size):    
-    axes.plot(reward_list[step_size_idx] / num_users, linewidth=3, label='\u0394 = {}'.format(step_size_val))
+for step_size_idx, step_size_val in enumerate(step_size):
+    if step_size_val == None:
+        axes.plot(reward_list[step_size_idx] / num_users, linewidth=3, label='Direct Update')
+    else:
+        axes.plot(reward_list[step_size_idx] / num_users, linewidth=3, label='\u0394 = {}'.format(step_size_val))
 
-axes.plot(no_step / num_users, linewidth=3, label='Direct Update')
+
 
 axes.set_title('Reward History', fontsize = 16)
 axes.set_xlabel('Time', fontsize = 16)
@@ -46,11 +38,9 @@ axes.set_yticks(np.arange(.1, 1.01, 0.1))
 
 for tick in axes.xaxis.get_major_ticks():
     tick.label.set_fontsize(14) 
-    #tick.label.set_rotation('vertical')
     
 for tick in axes.yaxis.get_major_ticks():
     tick.label.set_fontsize(14) 
-    #tick.label.set_rotation('vertical')
 
 plt.grid(linestyle='--')
 plt.tight_layout()

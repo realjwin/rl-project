@@ -3,9 +3,9 @@ import numpy as np
 import datetime as datetime
 from matplotlib import pyplot as plt
 
-filename_random = 'results/20191209-152941_random_actual.pkl'
-filename_exp_actual = 'results/20191209-153455_exp_actual.pkl'
-filename_exp_delta = 'results/20191209-154427_exp_delta.pkl'
+filename_random = 'results/20191209-231203_random_actual.pkl'
+filename_exp_actual = 'results/20191209-231213_exp_actual.pkl'
+filename_exp_delta = 'results/20191209-231226_exp_delta.pkl'
 
 with open(filename_random, 'rb') as f:
     data = pickle.load(f)
@@ -21,7 +21,6 @@ with open(filename_exp_delta, 'rb') as f:
     
 # Plot
 fig, axes = plt.subplots(1, 1, figsize=(8,6))
-#fig.suptitle('RL Performance', fontsize=16, y=1.02)
          
 axes.plot(reward_random, '-k', linewidth=3, label='Random Update')
 axes.plot(reward_exp_actual, '-b', linewidth=3, label='Bandit with Binary Reward, \u03B1 = 0.5, \u03B5 = 0.01')
@@ -36,11 +35,9 @@ axes.set_yticks(np.arange(.2, 1.01, 0.1))
 
 for tick in axes.xaxis.get_major_ticks():
     tick.label.set_fontsize(14) 
-    #tick.label.set_rotation('vertical')
-    
+
 for tick in axes.yaxis.get_major_ticks():
     tick.label.set_fontsize(14) 
-    #tick.label.set_rotation('vertical')
 
 plt.grid(linestyle='--')
 plt.tight_layout()
